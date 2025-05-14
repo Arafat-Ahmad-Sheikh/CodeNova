@@ -76,9 +76,9 @@ function Home() {
                     </button>
                     <div className="text-center">
                         <p className="text-base-content/60 pt-4">
-                            Don&apos;t have an account?{" "}
+                            Don&apos;t have an invite?{" "}
                             <a href="" className="link link-primary">
-                                Create account
+                                Create new room
                             </a>
 
                         </p>
