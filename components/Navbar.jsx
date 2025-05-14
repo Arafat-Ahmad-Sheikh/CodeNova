@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { LogOut, CodeXml, Settings, User } from "lucide-react";
+import React from 'react'
 
 const Navbar = () => {
     // importing authUser variable and logout function from useAuthstor
