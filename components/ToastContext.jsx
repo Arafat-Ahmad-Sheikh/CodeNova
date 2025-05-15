@@ -12,15 +12,8 @@ export const ToastProvider = ({ children }) => {
   };
 
   return (
-    <ToastContext.Provider value={{ showToast }}>
+    <ToastContext.Provider value={{ showToast, toast }}>
       {children}
-      {toast.show && (
-        <div className="toast toast-top toast-end z-50">
-          <div className={`alert alert-${toast.type}`}>
-            <span>{toast.message}</span>
-          </div>
-        </div>
-      )}
     </ToastContext.Provider>
   );
 };
