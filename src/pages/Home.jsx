@@ -4,7 +4,7 @@ import { v4 as uuid } from "uuid";
 import { useToast } from "../../components/ToastContext";
 import { useNavigate } from "react-router-dom";
 function Home() {
-  const navigate = useNavigate();  
+  const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [scrollY, setScrollY] = useState(0);
   const [roomId, setRoomId] = useState('');
@@ -12,14 +12,17 @@ function Home() {
   const homeRef = useRef(null);
   const loginRef = useRef(null);
   const { showToast } = useToast(); //  use toast context
-    const handler = (e) => {
-        if (e.key === "Enter") {
-        JoinRoom();
-        }
-    };
+  const handler = (e) => {
+    if (e.key === "Enter") {
+      JoinRoom();
+    }
+  };
 
   useEffect(() => {
-    const handleScroll = () => setScrollY(window.scrollY);
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      setScrollY(currentScrollY);
+    };
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
@@ -33,12 +36,12 @@ function Home() {
   };
 
   const JoinRoom = () => {
-   
+
     if (!Username) {
       showToast("warning", "Please enter a username");
       return;
     }
-     if (!roomId) {
+    if (!roomId) {
       showToast("warning", "Please enter a room ID");
       return;
     }
