@@ -8,20 +8,21 @@ import './App.css'
 import Navbar from '../components/Navbar'
 import Settings from './pages/Settings'
 import React from 'react'
+import useThemeStore from '../store/useThemestore'
 
 function App() {
+  const theme = useThemeStore((state) => state.theme);
+
   return (
-    <>
-      <div data-theme='cyberpunk'>
-        <Navbar></Navbar>
-        <Routes>
-          <Route path="/" element={<Home />}></Route>
-          <Route path="/editor/:roomId" element={<EditorPage />}></Route>
-          <Route path="/settings" element={<Settings />}></Route>
-        </Routes>
-      </div>
-    </>
-  )
+    <div data-theme={theme} className="min-h-screen w-full flex flex-col">
+      <Navbar />
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/settings" element={<Settings />} />
+        <Route path="/editor/:roomId" element={<EditorPage />} />
+      </Routes>
+    </div>
+  );
 }
 
 export default App;

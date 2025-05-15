@@ -72,7 +72,7 @@ function Home() {
                             e.preventDefault();
                             console.log("submitted");
                         }}
-                        className="bg-base-200 p-6 rounded-lg space-y-6 mb-32 w-full max-w-2xl"
+                        className="bg-base-200 p-6 rounded-lg space-y-6 mb-32 w-full max-w-2xl shadow-md"
                     >
                         {/* Logo & Title */}
                         <div className="flex items-center space-x-4">
