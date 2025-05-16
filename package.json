@@ -10,8 +10,14 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@babel/runtime": "^7.27.1",
+    "@dicebear/collection": "^9.2.2",
+    "@dicebear/core": "^9.2.2",
     "@tailwindcss/vite": "^4.1.6",
+    "boring-avatars": "^1.11.2",
+    "core-js-pure": "^3.42.0",
     "lucide-react": "^0.510.0",
+    "prop-types": "^15.8.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-hot-toast": "^2.5.2",
