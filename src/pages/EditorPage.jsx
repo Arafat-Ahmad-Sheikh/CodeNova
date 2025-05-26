@@ -54,8 +54,8 @@ function Home() {
 
         {/* Editor Panel */}
         <div className="flex-1 min-w-0 bg-base-200 flex items-center justify-center p-4"
-         style={{ paddingRight: '50%' }}>
-          <div className="max-w-full text-center w-full">
+         style={{ paddingRight: '2%' }}>
+          <div className="max-w-full h-100vh text-center w-full">
           <Editor />
           </div>
         </div>
