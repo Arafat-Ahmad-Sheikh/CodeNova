@@ -2,6 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import logo from "../assets/logo.png";
 import Client from '../../components/Client';
 import Editor from '../../components/Editor';
+import ACTIONS from '../action';
+import { useLocation,useNavigate,Navigate,useParams } from 'react-router-dom';
+import { initsocket } from '../socket';
+import { useToast } from '../../components/ToastContext';
 
 function Home() {
   const [scrollY, setScrollY] = useState(0);
@@ -17,10 +21,52 @@ function Home() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const [clients, setClients] = useState([
-    { socketId: "123", username: "User1" },
-    { socketId: "456", username: "User2" },
-  ]);
+  const socketRef = useRef(null);
+  const location = useLocation();
+  const reactNavigate = useNavigate();
+  const { roomId } = useParams();
+  const { showToast } = useToast();
+
+  const [clients, setClients] = useState([]);
+
+  useEffect(() => {
+    const init = async () => {
+      socketRef.current = await initsocket();
+      socketRef.current.on("connect_error", (err) => handleError(err));
+      socketRef.current.on("connect_failed", (err) => handleError(err));
+
+      function handleError(err) {
+        console.log("socket connection failed", err);
+        showToast("error", "Socket connection failed, try again later");
+        reactNavigate("/");
+      }
+
+      socketRef.current.emit(ACTIONS.JOIN, {
+        roomId,
+        username: location.state?.username || `Anonymous-${Math.floor(Math.random() * 1000)}`
+      });
+
+      socketRef.current.on(ACTIONS.JOINED, ({ clients, username, socketId }) => {
+        if (username !== location.state?.username) {
+          showToast("success", `${username} has joined the room`);
+          console.log(`${username} has joined the room`);
+        }
+
+        // Sanitize usernames to be strings
+        const sanitizedClients = clients.map(client => ({
+          ...client,
+          username: typeof client.username === 'string' ? client.username : JSON.stringify(client.username)
+        }));
+
+        setClients(sanitizedClients);
+      });
+    };
+    init();
+  }, []);
+
+  if (!location.state) {
+    return <Navigate to="/" />;
+  }
 
   return (
     <>
@@ -53,10 +99,12 @@ function Home() {
         </div>
 
         {/* Editor Panel */}
-        <div className="flex-1 min-w-0 bg-base-200 flex items-center justify-center p-4"
-         style={{ paddingRight: '2%' }}>
+        <div
+          className="flex-1 min-w-0 bg-base-200 flex items-center justify-center p-4"
+          style={{ paddingRight: '2%' }}
+        >
           <div className="max-w-full h-100vh text-center w-full">
-          <Editor />
+            <Editor />
           </div>
         </div>
       </div>
