@@ -76,6 +76,21 @@ function Home() {
   };
   }, []);
 
+ async function copyRoomId() {
+    try {
+      await navigator.clipboard.writeText(roomId);
+      showToast("success", "Room ID copied to clipboard");
+    } catch (error) {
+      console.error("Failed to copy room ID:", error);
+      showToast("error", "Failed to copy Room ID");
+    }
+
+  }
+  function leaveRoom() {
+    reactNavigate("/");
+  }
+
+
   if (!location.state) {
     return <Navigate to="/" />;
   }
@@ -105,8 +120,8 @@ function Home() {
 
           {/* Buttons */}
           <div className="flex flex-col space-y-2 pt-4">
-            <button className="btn btn-outline btn-accent font-bold">COPY ROOM ID</button>
-            <button className="btn btn-outline btn-error font-bold">LEAVE ROOM</button>
+            <button className="btn btn-outline btn-accent font-bold" onClick={copyRoomId}>COPY ROOM ID</button>
+            <button className="btn btn-outline btn-error font-bold" onClick={leaveRoom}>LEAVE ROOM</button>
           </div>
         </div>
 
