@@ -12,6 +12,7 @@ const languageOptions = {
 };
 
 const Editor = () => {
+  
   const [tabs, setTabs] = useState([
     { id: 1, name: "file1.js", code: "// Code for file1.js\n", language: "javascript" },
   ]);

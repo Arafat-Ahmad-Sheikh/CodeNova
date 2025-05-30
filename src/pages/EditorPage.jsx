@@ -26,10 +26,13 @@ function Home() {
   const reactNavigate = useNavigate();
   const { roomId } = useParams();
   const { showToast } = useToast();
+  const socketInitialized = useRef(false);
 
   const [clients, setClients] = useState([]);
 
   useEffect(() => {
+     if (socketInitialized.current) return;  // Prevent double init
+  socketInitialized.current = true;
     const init = async () => {
       socketRef.current = await initsocket();
       socketRef.current.on("connect_error", (err) => handleError(err));
@@ -60,8 +63,17 @@ function Home() {
 
         setClients(sanitizedClients);
       });
+      socketRef.current.on(ACTIONS.DISCONNECTED, ({ socketId, username }) => {
+        showToast("success", `${username} has left the room`);
+        setClients(prev => prev.filter(client => client.socketId !== socketId));
+      });
     };
     init();
+    return () => {
+    socketRef.current?.disconnect();
+    socketRef.current?.off(ACTIONS.JOINED);
+    socketRef.current?.off(ACTIONS.DISCONNECTED);
+  };
   }, []);
 
   if (!location.state) {
@@ -104,7 +116,7 @@ function Home() {
           style={{ paddingRight: '2%' }}
         >
           <div className="max-w-full h-100vh text-center w-full">
-            <Editor />
+            <Editor socketRef={socketRef} roomId={roomId}/>
           </div>
         </div>
       </div>
