@@ -3,11 +3,11 @@ import logo from "../assets/logo.png";
 import Client from '../../components/Client';
 import Editor from '../../components/Editor';
 import ACTIONS from '../action';
-import { useLocation,useNavigate,Navigate,useParams } from 'react-router-dom';
+import { useLocation, useNavigate, Navigate, useParams } from 'react-router-dom';
 import { initsocket } from '../socket';
 import { useToast } from '../../components/ToastContext';
 
-function Home() {
+function EditorPage() {
   const [scrollY, setScrollY] = useState(0);
   const homeRef = useRef(null);
   const loginRef = useRef(null);
@@ -31,8 +31,8 @@ function Home() {
   const [clients, setClients] = useState([]);
 
   useEffect(() => {
-     if (socketInitialized.current) return;  // Prevent double init
-  socketInitialized.current = true;
+    if (socketInitialized.current) return;  // Prevent double init
+    socketInitialized.current = true;
     const init = async () => {
       socketRef.current = await initsocket();
       socketRef.current.on("connect_error", (err) => handleError(err));
@@ -70,13 +70,13 @@ function Home() {
     };
     init();
     return () => {
-    socketRef.current?.disconnect();
-    socketRef.current?.off(ACTIONS.JOINED);
-    socketRef.current?.off(ACTIONS.DISCONNECTED);
-  };
+      socketRef.current?.disconnect();
+      socketRef.current?.off(ACTIONS.JOINED);
+      socketRef.current?.off(ACTIONS.DISCONNECTED);
+    };
   }, []);
 
- async function copyRoomId() {
+  async function copyRoomId() {
     try {
       await navigator.clipboard.writeText(roomId);
       showToast("success", "Room ID copied to clipboard");
@@ -87,7 +87,10 @@ function Home() {
 
   }
   function leaveRoom() {
-    reactNavigate("/");
+    if (socketRef.current) {
+      socketRef.current.disconnect(); // disconnects the socket
+    }
+    reactNavigate("/"); // navigate away
   }
 
 
@@ -131,7 +134,7 @@ function Home() {
           style={{ paddingRight: '2%' }}
         >
           <div className="max-w-full h-100vh text-center w-full">
-            <Editor socketRef={socketRef} roomId={roomId}/>
+            <Editor socketRef={socketRef} roomId={roomId} />
           </div>
         </div>
       </div>
@@ -139,4 +142,4 @@ function Home() {
   );
 }
 
-export default Home;
+export default EditorPage;
