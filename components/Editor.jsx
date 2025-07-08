@@ -1,5 +1,7 @@
 import React, { useState } from "react";
+import { useEffect } from "react";
 import MonacoEditor from "@monaco-editor/react";
+import ACTIONS from "../src/action";
 
 // Mapping of language to file extension
 const languageOptions = {
@@ -11,8 +13,8 @@ const languageOptions = {
   typescript: "ts",
 };
 
-const Editor = () => {
-  
+const Editor = ({ socketRef, roomId }) => {
+
   const [tabs, setTabs] = useState([
     { id: 1, name: "file1.js", code: "// Code for file1.js\n", language: "javascript" },
   ]);
@@ -23,7 +25,35 @@ const Editor = () => {
     setTabs((prevTabs) =>
       prevTabs.map((tab) => (tab.id === tabId ? { ...tab, code: value || "" } : tab))
     );
+
+    if (socketRef?.current) {
+      socketRef.current.emit(ACTIONS.CODE_CHANGE, {
+        roomId,
+        code: value, // send the new code
+      });
+    }
   };
+
+
+  useEffect(() => {
+    if (!socketRef?.current) return;
+
+    console.log("Setting code change listener");
+    const handleRemoteCodeChange = ({ code }) => {
+      console.log("Remote code received:", code);
+      setTabs((prevTabs) =>
+        prevTabs.map((tab) =>
+          tab.id === activeTabId ? { ...tab, code } : tab
+        )
+      );
+    };
+
+    socketRef.current.on(ACTIONS.CODE_CHANGE, handleRemoteCodeChange);
+
+    return () => {
+      socketRef.current?.off(ACTIONS.CODE_CHANGE, handleRemoteCodeChange);
+    };
+  }, [socketRef?.current, activeTabId]);
 
   const handleLanguageChange = (tabId, newLang) => {
     setTabs((prevTabs) =>
@@ -63,7 +93,6 @@ const Editor = () => {
     setTabs((prevTabs) => {
       const newTabs = prevTabs.filter((tab) => tab.id !== tabId);
       if (newTabs.length === 0) {
-        // Add new tab if all deleted
         const defaultLang = "javascript";
         const extension = languageOptions[defaultLang];
         return [
@@ -89,9 +118,8 @@ const Editor = () => {
         {tabs.map((tab) => (
           <div
             key={tab.id}
-            className={`tab cursor-pointer px-4 py-2 border-r border-base-300 flex items-center ${
-              tab.id === activeTabId ? "tab-active font-bold bg-white" : "bg-base-200"
-            }`}
+            className={`tab cursor-pointer px-4 py-2 border-r border-base-300 flex items-center ${tab.id === activeTabId ? "tab-active font-bold bg-white" : "bg-base-200"
+              }`}
             onClick={() => setActiveTabId(tab.id)}
           >
             <span>{tab.name}</span>
@@ -140,6 +168,7 @@ const Editor = () => {
 
                 {/* Monaco Editor */}
                 <MonacoEditor
+                  key={activeTabId}
                   height="100%"
                   language={tab.language}
                   value={tab.code}
