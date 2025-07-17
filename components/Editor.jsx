@@ -1,9 +1,7 @@
-import React, { useState } from "react";
-import { useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import MonacoEditor from "@monaco-editor/react";
 import ACTIONS from "../src/action";
 
-// Mapping of language to file extension
 const languageOptions = {
   javascript: "js",
   python: "py",
@@ -14,175 +12,188 @@ const languageOptions = {
 };
 
 const Editor = ({ socketRef, roomId }) => {
-
-  const [tabs, setTabs] = useState([
-    { id: 1, name: "file1.js", code: "// Code for file1.js\n", language: "javascript" },
-  ]);
-  const [activeTabId, setActiveTabId] = useState(tabs[0].id);
+  const [tabs, setTabs] = useState([]);
+  const [activeTabId, setActiveTabId] = useState(null);
   const [nextTabId, setNextTabId] = useState(2);
 
-  const handleEditorChange = (value, tabId) => {
-    setTabs((prevTabs) =>
-      prevTabs.map((tab) => (tab.id === tabId ? { ...tab, code: value || "" } : tab))
-    );
-
-    if (socketRef?.current) {
-      socketRef.current.emit(ACTIONS.CODE_CHANGE, {
-        roomId,
-        code: value, // send the new code
-      });
-    }
-  };
-
-
+  // Initialize with default tab if empty
   useEffect(() => {
-    if (!socketRef?.current) return;
+    if (tabs.length === 0 && socketRef.current) {
+      const defaultTab = {
+        id: 1,
+        name: "file1.js",
+        code: "// Start coding",
+        language: "javascript"
+      };
+      setTabs([defaultTab]);
+      setActiveTabId(1);
+      setNextTabId(2);
+    }
+  }, [tabs.length, socketRef]);
 
-    console.log("Setting code change listener");
-    const handleRemoteCodeChange = ({ code }) => {
-      console.log("Remote code received:", code);
-      setTabs((prevTabs) =>
-        prevTabs.map((tab) =>
-          tab.id === activeTabId ? { ...tab, code } : tab
-        )
-      );
+  // Socket event handlers
+  useEffect(() => {
+    if (!socketRef.current) return;
+
+    const socket = socketRef.current;
+
+    const handleSyncTabs = ({ tabs }) => {
+      if (tabs && tabs.length > 0) {
+        setTabs(tabs);
+        if (!tabs.some(tab => tab.id === activeTabId)) {
+          setActiveTabId(tabs[0].id);
+        }
+        setNextTabId(Math.max(...tabs.map(tab => tab.id)) + 1);
+      }
     };
 
-    socketRef.current.on(ACTIONS.CODE_CHANGE, handleRemoteCodeChange);
+    const handleCodeChange = ({ tabId, code }) => {
+      setTabs(prev => prev.map(tab => 
+        tab.id === tabId ? { ...tab, code } : tab
+      ));
+    };
+
+    const handleAddTab = ({ tab }) => {
+      setTabs(prev => [...prev, tab]);
+      setNextTabId(prev => Math.max(prev, tab.id + 1));
+    };
+
+    const handleDeleteTab = ({ tabId }) => {
+      setTabs(prev => {
+        const newTabs = prev.filter(tab => tab.id !== tabId);
+        if (activeTabId === tabId && newTabs.length > 0) {
+          setActiveTabId(newTabs[0].id);
+        }
+        return newTabs;
+      });
+    };
+
+    socket.on(ACTIONS.SYNC_TABS, handleSyncTabs);
+    socket.on(ACTIONS.CODE_CHANGE, handleCodeChange);
+    socket.on(ACTIONS.ADD_TAB, handleAddTab);
+    socket.on(ACTIONS.DELETE_TAB, handleDeleteTab);
 
     return () => {
-      socketRef.current?.off(ACTIONS.CODE_CHANGE, handleRemoteCodeChange);
+      socket.off(ACTIONS.SYNC_TABS, handleSyncTabs);
+      socket.off(ACTIONS.CODE_CHANGE, handleCodeChange);
+      socket.off(ACTIONS.ADD_TAB, handleAddTab);
+      socket.off(ACTIONS.DELETE_TAB, handleDeleteTab);
     };
-  }, [socketRef?.current, activeTabId]);
+  }, [socketRef, activeTabId]);
+
+  const handleEditorChange = (value, tabId) => {
+    setTabs(prev => prev.map(tab => 
+      tab.id === tabId ? { ...tab, code: value || "" } : tab
+    ));
+    socketRef.current?.emit(ACTIONS.CODE_CHANGE, { 
+      roomId, 
+      tabId, 
+      code: value 
+    });
+  };
 
   const handleLanguageChange = (tabId, newLang) => {
-    setTabs((prevTabs) =>
-      prevTabs.map((tab) => {
-        if (tab.id === tabId) {
-          const baseName = tab.name.split(".")[0];
-          const newExtension = languageOptions[newLang];
-          return {
-            ...tab,
-            language: newLang,
-            name: `${baseName}.${newExtension}`,
-          };
-        }
-        return tab;
-      })
-    );
+    const baseName = tabs.find(tab => tab.id === tabId)?.name.split(".")[0];
+    const extension = languageOptions[newLang];
+    const newName = `${baseName}.${extension}`;
+
+    setTabs(prev => prev.map(tab => 
+      tab.id === tabId ? { ...tab, language: newLang, name: newName } : tab
+    ));
   };
 
   const addNewTab = () => {
     const defaultLang = "javascript";
     const extension = languageOptions[defaultLang];
-    const newId = nextTabId;
-    setTabs((prevTabs) => [
-      ...prevTabs,
-      {
-        id: newId,
-        name: `file${newId}.${extension}`,
-        code: "// New file\n",
-        language: defaultLang,
-      },
-    ]);
-    setActiveTabId(newId);
-    setNextTabId(newId + 1);
+    const newTab = {
+      id: nextTabId,
+      name: `file${nextTabId}.${extension}`,
+      code: "// New file\n",
+      language: defaultLang,
+    };
+    setTabs(prev => [...prev, newTab]);
+    setActiveTabId(newTab.id);
+    setNextTabId(nextTabId + 1);
+    socketRef.current?.emit(ACTIONS.ADD_TAB, { roomId, tab: newTab });
   };
 
   const deleteTab = (tabId) => {
-    setTabs((prevTabs) => {
-      const newTabs = prevTabs.filter((tab) => tab.id !== tabId);
-      if (newTabs.length === 0) {
-        const defaultLang = "javascript";
-        const extension = languageOptions[defaultLang];
-        return [
-          {
-            id: 1,
-            name: `file1.${extension}`,
-            code: "",
-            language: defaultLang,
-          },
-        ];
-      }
-      if (activeTabId === tabId) {
-        setActiveTabId(newTabs[0].id);
-      }
-      return newTabs;
-    });
+    if (tabs.length <= 1) {
+      // Don't allow deleting the last tab
+      return;
+    }
+    
+    setTabs(prev => prev.filter(tab => tab.id !== tabId));
+    if (activeTabId === tabId) {
+      setActiveTabId(tabs.find(tab => tab.id !== tabId)?.id);
+    }
+    socketRef.current?.emit(ACTIONS.DELETE_TAB, { roomId, tabId });
   };
+
+  const activeTab = tabs.find(tab => tab.id === activeTabId);
 
   return (
     <div className="flex flex-col h-[calc(100vh-120px-1rem)]">
-      {/* Tabs Header */}
       <div className="flex border-b border-base-300 bg-base-200">
-        {tabs.map((tab) => (
+        {tabs.map(tab => (
           <div
             key={tab.id}
-            className={`tab cursor-pointer px-4 py-2 border-r border-base-300 flex items-center ${tab.id === activeTabId ? "tab-active font-bold bg-white" : "bg-base-200"
-              }`}
+            className={`tab cursor-pointer px-4 py-2 border-r ${
+              tab.id === activeTabId ? "tab-active font-bold bg-white" : "bg-base-200"
+            }`}
             onClick={() => setActiveTabId(tab.id)}
           >
             <span>{tab.name}</span>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                deleteTab(tab.id);
-              }}
-              className="ml-2 text-red-500 hover:text-red-700 font-bold"
-              title="Delete tab"
-            >
-              &times;
-            </button>
+            {tabs.length > 1 && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  deleteTab(tab.id);
+                }}
+                className="ml-2 text-red-500 hover:text-red-700 font-bold"
+              >
+                &times;
+              </button>
+            )}
           </div>
         ))}
         <button
           onClick={addNewTab}
           className="btn btn-sm btn-outline btn-accent ml-auto mr-2 my-1"
-          type="button"
         >
           + Add Tab
         </button>
       </div>
 
-      {/* Editor Area */}
       <div className="flex-1 bg-base-100 p-4 overflow-hidden">
-        {tabs.map(
-          (tab) =>
-            tab.id === activeTabId && (
-              <div key={tab.id} className="h-full flex flex-col gap-2">
-                {/* Language Selector */}
-                <div className="mb-2">
-                  <label className="mr-2 font-medium">Language:</label>
-                  <select
-                    className="select select-bordered select-sm"
-                    value={tab.language}
-                    onChange={(e) => handleLanguageChange(tab.id, e.target.value)}
-                  >
-                    {Object.keys(languageOptions).map((lang) => (
-                      <option key={lang} value={lang}>
-                        {lang}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Monaco Editor */}
-                <MonacoEditor
-                  key={activeTabId}
-                  height="100%"
-                  language={tab.language}
-                  value={tab.code}
-                  onChange={(value) => handleEditorChange(value, tab.id)}
-                  theme="vs-dark"
-                  options={{
-                    minimap: { enabled: false },
-                    fontSize: 16,
-                    wordWrap: "on",
-                    automaticLayout: true,
-                  }}
-                />
-              </div>
-            )
+        {activeTab && (
+          <div className="h-full flex flex-col gap-2">
+            <div className="mb-2">
+              <label className="mr-2 font-medium">Language:</label>
+              <select
+                className="select select-bordered select-sm"
+                value={activeTab.language}
+                onChange={(e) => handleLanguageChange(activeTab.id, e.target.value)}
+              >
+                {Object.keys(languageOptions).map(lang => (
+                  <option key={lang} value={lang}>{lang}</option>
+                ))}
+              </select>
+            </div>
+            <MonacoEditor
+              height="100%"
+              language={activeTab.language}
+              value={activeTab.code}
+              onChange={(val) => handleEditorChange(val, activeTab.id)}
+              theme="vs-dark"
+              options={{
+                minimap: { enabled: false },
+                fontSize: 16,
+                wordWrap: "on",
+                automaticLayout: true,
+              }}
+            />
+          </div>
         )}
       </div>
     </div>
