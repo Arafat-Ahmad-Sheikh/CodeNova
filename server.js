@@ -4,8 +4,6 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import ACTIONS from './src/action.js';
 
-
-
 const app = express();
 app.use(cors());
 const server = http.createServer(app);
@@ -13,7 +11,6 @@ const io = new Server(server);
 
 const userSocketMap = {};
 const roomTabs = {}; // Stores tabs for each room
-const roomNextTabIds = {}; // Stores next tab ID for each room
 
 function getAllConnectedClients(roomId) {
   return Array.from(io.sockets.adapter.rooms.get(roomId) || []).map(socketId => {
@@ -36,14 +33,10 @@ io.on('connection', (socket) => {
       roomTabs[roomId] = [
         { id: 1, name: "file1.js", code: "// Start coding", language: "javascript" }
       ];
-      roomNextTabIds[roomId] = 2;
     }
 
     // Send current tabs to the joining client
-    socket.emit(ACTIONS.SYNC_TABS, { 
-      tabs: roomTabs[roomId],
-      nextTabId: roomNextTabIds[roomId] 
-    });
+    socket.emit(ACTIONS.SYNC_TABS, { tabs: roomTabs[roomId] });
 
     const clients = getAllConnectedClients(roomId);
     clients.forEach(({ socketId }) => {
@@ -66,24 +59,11 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Handle new tab requests
-  socket.on(ACTIONS.ADD_TAB, ({ roomId }) => {
-    if (roomTabs[roomId] && roomNextTabIds[roomId]) {
-      const defaultLang = "javascript";
-      const extension = languageOptions[defaultLang];
-      const newTabId = roomNextTabIds[roomId];
-      const newTab = {
-        id: newTabId,
-        name: `file${newTabId}.${extension}`,
-        code: "// New file\n",
-        language: defaultLang,
-      };
-      
-      roomTabs[roomId].push(newTab);
-      roomNextTabIds[roomId]++;
-      
-      // Broadcast to all clients in the room
-      io.in(roomId).emit(ACTIONS.ADD_TAB, { tab: newTab });
+  // Handle tab additions
+  socket.on(ACTIONS.ADD_TAB, ({ roomId, tab }) => {
+    if (roomTabs[roomId]) {
+      roomTabs[roomId].push(tab);
+      io.in(roomId).emit(ACTIONS.ADD_TAB, { tab });
     }
   });
 
