@@ -1,13 +1,20 @@
+// server.js
+
 import express from 'express';
 import http from 'http';
 import { Server } from 'socket.io';
-import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import ACTIONS from './src/action.js';
 
 const app = express();
-app.use(cors());
 const server = http.createServer(app);
 const io = new Server(server);
+
+// Serve static files from the 'dist' folder
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+app.use(express.static(path.join(__dirname, 'dist')));
 
 const userSocketMap = {};
 const roomTabs = {}; // Stores tabs for each room
@@ -28,14 +35,12 @@ io.on('connection', (socket) => {
     userSocketMap[socket.id] = { username };
     socket.join(roomId);
 
-    // Initialize room with default tab if empty
     if (!roomTabs[roomId]) {
       roomTabs[roomId] = [
         { id: 1, name: "file1.js", code: "// Start coding", language: "javascript" }
       ];
     }
 
-    // Send current tabs to the joining client
     socket.emit(ACTIONS.SYNC_TABS, { tabs: roomTabs[roomId] });
 
     const clients = getAllConnectedClients(roomId);
@@ -48,7 +53,6 @@ io.on('connection', (socket) => {
     });
   });
 
-  // Handle code changes
   socket.on(ACTIONS.CODE_CHANGE, ({ roomId, tabId, code }) => {
     if (roomTabs[roomId]) {
       const tab = roomTabs[roomId].find(t => t.id === tabId);
@@ -59,7 +63,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Handle tab additions
   socket.on(ACTIONS.ADD_TAB, ({ roomId, tab }) => {
     if (roomTabs[roomId]) {
       roomTabs[roomId].push(tab);
@@ -67,7 +70,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Handle tab deletions
   socket.on(ACTIONS.DELETE_TAB, ({ roomId, tabId }) => {
     if (roomTabs[roomId]) {
       roomTabs[roomId] = roomTabs[roomId].filter(tab => tab.id !== tabId);
@@ -85,6 +87,12 @@ io.on('connection', (socket) => {
     });
     delete userSocketMap[socket.id];
   });
+});
+
+// This is the catch-all route that must be correct.
+// It sends the main HTML file for any page request.
+app.get(/.*/, (req, res) => {
+    res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
 const PORT = process.env.PORT || 5000;
