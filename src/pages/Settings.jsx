@@ -1,5 +1,5 @@
 import React from 'react'
-import useThemeStore from '../../store/useThemestore'
+import useThemeStore from '../../store/useThemeStore'
 import { THEMES } from '../../constants';
 
 function Settings() {

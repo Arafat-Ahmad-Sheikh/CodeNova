@@ -8,7 +8,7 @@ import './App.css'
 import Navbar from '../components/Navbar'
 import Settings from './pages/Settings'
 import React from 'react'
-import useThemeStore from '../store/useThemestore'
+import useThemeStore from '../store/useThemeStore'
 import { useToast } from '../components/ToastContext'
 
 function App() {
